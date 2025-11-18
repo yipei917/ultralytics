@@ -192,3 +192,6 @@ calibration_*.npy
 *.heic
 *.ico
 *.raw
+
+
+train/
