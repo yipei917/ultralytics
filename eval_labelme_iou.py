@@ -2,10 +2,11 @@ import argparse
 import csv
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from ultralytics import YOLO
+from ultralytics.models import RTDETR
 
 
 def normalize_label(label: str) -> str:
@@ -104,6 +105,49 @@ def collect_images(source: Path) -> List[Path]:
     )
 
 
+def load_model(weights: Path, model_type: Optional[str] = None) -> Union[YOLO, RTDETR]:
+    """加载模型，自动检测或使用指定的模型类型。
+    
+    Args:
+        weights: 模型权重路径
+        model_type: 模型类型 ('yolo', 'rtdetr', 或 None 自动检测)
+    
+    Returns:
+        加载的模型对象
+    """
+    weights_str = str(weights)
+    
+    # 如果指定了模型类型，直接使用
+    if model_type:
+        model_type = model_type.lower()
+        if model_type == 'rtdetr':
+            return RTDETR(weights_str)
+        elif model_type == 'yolo':
+            return YOLO(weights_str)
+        else:
+            raise ValueError(f"不支持的模型类型: {model_type}，支持 'yolo' 或 'rtdetr'")
+    
+    # 自动检测：根据路径名称判断
+    weights_lower = weights_str.lower()
+    if 'rtdetr' in weights_lower:
+        try:
+            return RTDETR(weights_str)
+        except Exception:
+            # 如果 RTDETR 加载失败，尝试 YOLO
+            pass
+    
+    # 默认尝试 YOLO
+    try:
+        return YOLO(weights_str)
+    except Exception as e:
+        # 如果 YOLO 加载失败，尝试 RTDETR
+        try:
+            print(f"YOLO 加载失败: {e}，尝试使用 RTDETR")
+            return RTDETR(weights_str)
+        except Exception as e2:
+            raise RuntimeError(f"无法加载模型 (YOLO: {e}, RTDETR: {e2})")
+
+
 def evaluate(
     weights: Path,
     source_dir: Path,
@@ -111,8 +155,11 @@ def evaluate(
     conf_thr: float,
     device: str,
     save_csv: Optional[Path],
+    model_type: Optional[str] = None,
 ):
-    model = YOLO(str(weights))
+    model = load_model(weights, model_type)
+    model_name = "RTDETR" if isinstance(model, RTDETR) else "YOLO"
+    print(f"使用模型类型: {model_name}")
     image_paths = collect_images(source_dir)
     if not image_paths:
         raise FileNotFoundError(f"未在 {source_dir} 找到图像文件")
@@ -201,7 +248,7 @@ def parse_args():
         description="对 Labelme 标注数据执行推理并计算 IoU"
     )
     parser.add_argument(
-        "--weights",
+        "--weights", '-w',
         type=Path,
         default=Path(
             "/home/gdw/object_detection/ultralytics/train/"
@@ -230,6 +277,13 @@ def parse_args():
         default=None,
         help="可选：保存逐图结果的 CSV 路径",
     )
+    parser.add_argument(
+        "--model-type", '-t',
+        type=str,
+        default=None,
+        choices=["yolo", "rtdetr"],
+        help="模型类型：'yolo' 或 'rtdetr'，不指定则自动检测",
+    )
     return parser.parse_args()
 
 
@@ -242,5 +296,6 @@ if __name__ == "__main__":
         conf_thr=args.conf_thr,
         device=args.device,
         save_csv=args.save_csv,
+        model_type=args.model_type,
     )
 
