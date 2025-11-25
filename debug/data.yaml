@@ -1,0 +1,6 @@
+train: /home/gdw/object_detection/ultralytics/datasets/debug/images/train
+val: /home/gdw/object_detection/ultralytics/datasets/debug/images/val
+test: /home/gdw/object_detection/ultralytics/datasets/debug/images/test
+
+nc: 1  # 类别数量
+names: ['NG']  # 类别名称，需与标签文件中的类别一致
