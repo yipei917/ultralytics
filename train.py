@@ -3,7 +3,10 @@ from ultralytics.models import RTDETR
 import os
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
- 
+
+# 将本地代码以开发模式安装
+# pip install -e /home/gdw/object_detection/ultralytics
+
 if __name__ == '__main__':
     # 方式1: 使用本地ultralytics中的yaml配置文件（从头开始训练，不加载预训练权重）
     # model = YOLO(model='./ultralytics/cfg/models/11/yolo11n.yaml')
